@@ -1,6 +1,6 @@
 import copy
 
-from .db_postprocess import DBPostProcess
+from .det_postprocess import DBPostProcess
 from .rec_postprocess import CTCLabelDecode
 
 def build_post_process(config, global_config=None):
