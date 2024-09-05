@@ -1,8 +1,147 @@
+import argparse
 import os
 import numpy as np
 import cv2
 import sys
+import paddle
 from paddle import inference
+
+import PIL
+from PIL import Image, ImageDraw, ImageFont
+import random
+import math
+
+
+def str2bool(v):
+    return v.lower() in ("true", "yes", "t", "y", "1")
+
+def init_args():
+    parser = argparse.ArgumentParser()
+    # params for prediction engine
+    parser.add_argument("--use_gpu", type=str2bool, default=True)
+    parser.add_argument("--use_xpu", type=str2bool, default=False)
+    parser.add_argument("--use_npu", type=str2bool, default=False)
+    parser.add_argument("--use_mlu", type=str2bool, default=False)
+    parser.add_argument("--ir_optim", type=str2bool, default=True)
+    parser.add_argument("--use_tensorrt", type=str2bool, default=False)
+    parser.add_argument("--min_subgraph_size", type=int, default=15)
+    parser.add_argument("--precision", type=str, default="fp32")
+    parser.add_argument("--gpu_mem", type=int, default=500)
+    parser.add_argument("--gpu_id", type=int, default=0)
+
+    # params for text detector
+    parser.add_argument("--image_dir", type=str)
+    parser.add_argument("--page_num", type=int, default=0)
+    parser.add_argument("--det_algorithm", type=str, default="DB")
+    parser.add_argument("--det_model_dir", type=str)
+    parser.add_argument("--det_limit_side_len", type=float, default=960)
+    parser.add_argument("--det_limit_type", type=str, default="max")
+    parser.add_argument("--det_box_type", type=str, default="quad")
+
+    # DB parmas
+    parser.add_argument("--det_db_thresh", type=float, default=0.3)
+    parser.add_argument("--det_db_box_thresh", type=float, default=0.6)
+    parser.add_argument("--det_db_unclip_ratio", type=float, default=1.5)
+    parser.add_argument("--max_batch_size", type=int, default=10)
+    parser.add_argument("--use_dilation", type=str2bool, default=False)
+    parser.add_argument("--det_db_score_mode", type=str, default="fast")
+
+    # EAST parmas
+    parser.add_argument("--det_east_score_thresh", type=float, default=0.8)
+    parser.add_argument("--det_east_cover_thresh", type=float, default=0.1)
+    parser.add_argument("--det_east_nms_thresh", type=float, default=0.2)
+
+    # SAST parmas
+    parser.add_argument("--det_sast_score_thresh", type=float, default=0.5)
+    parser.add_argument("--det_sast_nms_thresh", type=float, default=0.2)
+
+    # PSE parmas
+    parser.add_argument("--det_pse_thresh", type=float, default=0)
+    parser.add_argument("--det_pse_box_thresh", type=float, default=0.85)
+    parser.add_argument("--det_pse_min_area", type=float, default=16)
+    parser.add_argument("--det_pse_scale", type=int, default=1)
+
+    # FCE parmas
+    parser.add_argument("--scales", type=list, default=[8, 16, 32])
+    parser.add_argument("--alpha", type=float, default=1.0)
+    parser.add_argument("--beta", type=float, default=1.0)
+    parser.add_argument("--fourier_degree", type=int, default=5)
+
+    # params for text recognizer
+    parser.add_argument("--rec_algorithm", type=str, default="SVTR_LCNet")
+    parser.add_argument("--rec_model_dir", type=str)
+    parser.add_argument("--rec_image_inverse", type=str2bool, default=True)
+    parser.add_argument("--rec_image_shape", type=str, default="3, 48, 320")
+    parser.add_argument("--rec_batch_num", type=int, default=6)
+    parser.add_argument("--max_text_length", type=int, default=25)
+    parser.add_argument(
+        "--rec_char_dict_path", type=str, default="src/doc/ppocr_keys_v1.txt"
+    )
+    parser.add_argument("--use_space_char", type=str2bool, default=True)
+    parser.add_argument("--vis_font_path", type=str, default="src/doc/fonts/simfang.ttf")
+    parser.add_argument("--drop_score", type=float, default=0.5)
+
+    # params for e2e
+    parser.add_argument("--e2e_algorithm", type=str, default="PGNet")
+    parser.add_argument("--e2e_model_dir", type=str)
+    parser.add_argument("--e2e_limit_side_len", type=float, default=768)
+    parser.add_argument("--e2e_limit_type", type=str, default="max")
+
+    # PGNet parmas
+    parser.add_argument("--e2e_pgnet_score_thresh", type=float, default=0.5)
+    parser.add_argument(
+        "--e2e_char_dict_path", type=str, default="./ppocr/utils/ic15_dict.txt"
+    )
+    parser.add_argument("--e2e_pgnet_valid_set", type=str, default="totaltext")
+    parser.add_argument("--e2e_pgnet_mode", type=str, default="fast")
+
+    # params for text classifier
+    parser.add_argument("--use_angle_cls", type=str2bool, default=False)
+    parser.add_argument("--cls_model_dir", type=str)
+    parser.add_argument("--cls_image_shape", type=str, default="3, 48, 192")
+    parser.add_argument("--label_list", type=list, default=["0", "180"])
+    parser.add_argument("--cls_batch_num", type=int, default=6)
+    parser.add_argument("--cls_thresh", type=float, default=0.9)
+
+    parser.add_argument("--enable_mkldnn", type=str2bool, default=False)
+    parser.add_argument("--cpu_threads", type=int, default=10)
+    parser.add_argument("--use_pdserving", type=str2bool, default=False)
+    parser.add_argument("--warmup", type=str2bool, default=False)
+
+    # SR parmas
+    parser.add_argument("--sr_model_dir", type=str)
+    parser.add_argument("--sr_image_shape", type=str, default="3, 32, 128")
+    parser.add_argument("--sr_batch_num", type=int, default=1)
+
+    #
+    parser.add_argument("--draw_img_save_dir", type=str, default="./inference_results")
+    parser.add_argument("--save_crop_res", type=str2bool, default=False)
+    parser.add_argument("--crop_res_save_dir", type=str, default="./output")
+
+    # multi-process
+    parser.add_argument("--use_mp", type=str2bool, default=False)
+    parser.add_argument("--total_process_num", type=int, default=1)
+    parser.add_argument("--process_id", type=int, default=0)
+
+    parser.add_argument("--benchmark", type=str2bool, default=False)
+    parser.add_argument("--save_log_path", type=str, default="./log_output/")
+
+    parser.add_argument("--show_log", type=str2bool, default=True)
+    parser.add_argument("--use_onnx", type=str2bool, default=False)
+
+    # extended function
+    parser.add_argument(
+        "--return_word_box",
+        type=str2bool,
+        default=False,
+        help="Whether return the bbox of each word (split by space) or chinese character. Only used in ppstructure for layout recovery",
+    )
+
+    return parser
+
+def parse_args():
+    parser = init_args()
+    return parser.parse_args()
 
 def _check_image_file(path):
     img_end = {"jpg", "bmp", "png", "jpeg", "rgb", "tif", "tiff", "gif", "pdf"}
@@ -385,3 +524,121 @@ def get_infer_gpuid():
         "The first GPU is used for inference by default, GPU ID: {}".format(gpu_ids[0])
     )
     return int(gpu_ids[0])
+
+
+def check_and_read(img_path):
+    if os.path.basename(img_path)[-3:].lower() == "gif":
+        gif = cv2.VideoCapture(img_path)
+        ret, frame = gif.read()
+        if not ret:
+            print("Cannot read. This gif image maybe corrupted.")
+            return None, False
+        if len(frame.shape) == 2 or frame.shape[-1] == 1:
+            frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
+        imgvalue = frame[:, :, ::-1]
+        return imgvalue, True, False
+    elif os.path.basename(img_path)[-3:].lower() == "pdf":
+        from paddle.utils import try_import
+
+        fitz = try_import("fitz")
+        from PIL import Image
+
+        imgs = []
+        with fitz.open(img_path) as pdf:
+            for pg in range(0, pdf.page_count):
+                page = pdf[pg]
+                mat = fitz.Matrix(2, 2)
+                pm = page.get_pixmap(matrix=mat, alpha=False)
+
+                # if width or height > 2000 pixels, don't enlarge the image
+                if pm.width > 2000 or pm.height > 2000:
+                    pm = page.get_pixmap(matrix=fitz.Matrix(1, 1), alpha=False)
+
+                img = Image.frombytes("RGB", [pm.width, pm.height], pm.samples)
+                img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+                imgs.append(img)
+            return imgs, False, True
+    return None, False, False
+
+def draw_ocr_box_txt(
+    image,
+    boxes,
+    txts=None,
+    scores=None,
+    drop_score=0.5,
+    font_path="src/doc/fonts/simfang.ttf",
+):
+    h, w = image.height, image.width
+    img_left = image.copy()
+    img_right = np.ones((h, w, 3), dtype=np.uint8) * 255
+    random.seed(0)
+
+    draw_left = ImageDraw.Draw(img_left)
+    if txts is None or len(txts) != len(boxes):
+        txts = [None] * len(boxes)
+    for idx, (box, txt) in enumerate(zip(boxes, txts)):
+        if scores is not None and scores[idx] < drop_score:
+            continue
+        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+        draw_left.polygon(box, fill=color)
+        img_right_text = draw_box_txt_fine((w, h), box, txt, font_path)
+        pts = np.array(box, np.int32).reshape((-1, 1, 2))
+        cv2.polylines(img_right_text, [pts], True, color, 1)
+        img_right = cv2.bitwise_and(img_right, img_right_text)
+    img_left = Image.blend(image, img_left, 0.5)
+    img_show = Image.new("RGB", (w * 2, h), (255, 255, 255))
+    img_show.paste(img_left, (0, 0, w, h))
+    img_show.paste(Image.fromarray(img_right), (w, 0, w * 2, h))
+    return np.array(img_show)
+
+def draw_box_txt_fine(img_size, box, txt, font_path="src/doc/fonts/simfang.ttf"):
+    box_height = int(
+        math.sqrt((box[0][0] - box[3][0]) ** 2 + (box[0][1] - box[3][1]) ** 2)
+    )
+    box_width = int(
+        math.sqrt((box[0][0] - box[1][0]) ** 2 + (box[0][1] - box[1][1]) ** 2)
+    )
+
+    if box_height > 2 * box_width and box_height > 30:
+        img_text = Image.new("RGB", (box_height, box_width), (255, 255, 255))
+        draw_text = ImageDraw.Draw(img_text)
+        if txt:
+            font = create_font(txt, (box_height, box_width), font_path)
+            draw_text.text([0, 0], txt, fill=(0, 0, 0), font=font)
+        img_text = img_text.transpose(Image.ROTATE_270)
+    else:
+        img_text = Image.new("RGB", (box_width, box_height), (255, 255, 255))
+        draw_text = ImageDraw.Draw(img_text)
+        if txt:
+            font = create_font(txt, (box_width, box_height), font_path)
+            draw_text.text([0, 0], txt, fill=(0, 0, 0), font=font)
+
+    pts1 = np.float32(
+        [[0, 0], [box_width, 0], [box_width, box_height], [0, box_height]]
+    )
+    pts2 = np.array(box, dtype=np.float32)
+    M = cv2.getPerspectiveTransform(pts1, pts2)
+
+    img_text = np.array(img_text, dtype=np.uint8)
+    img_right_text = cv2.warpPerspective(
+        img_text,
+        M,
+        img_size,
+        flags=cv2.INTER_NEAREST,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=(255, 255, 255),
+    )
+    return img_right_text
+
+def create_font(txt, sz, font_path="src/doc/fonts/simfang.ttf"):
+    font_size = int(sz[1] * 0.99)
+    font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
+    if int(PIL.__version__.split(".")[0]) < 10:
+        length = font.getsize(txt)[0]
+    else:
+        length = font.getlength(txt)
+
+    if length > sz[0]:
+        font_size = int(font_size * sz[0] / length)
+        font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
+    return font
