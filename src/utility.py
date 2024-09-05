@@ -591,6 +591,12 @@ def draw_ocr_box_txt(
     img_show.paste(Image.fromarray(img_right), (w, 0, w * 2, h))
     return np.array(img_show)
 
+def draw_text_det_res(dt_boxes, img):
+    for box in dt_boxes:
+        box = np.array(box).astype(np.int32).reshape(-1, 2)
+        cv2.polylines(img, [box], True, color=(255, 255, 0), thickness=2)
+    return img
+
 def draw_box_txt_fine(img_size, box, txt, font_path="src/doc/fonts/simfang.ttf"):
     box_height = int(
         math.sqrt((box[0][0] - box[3][0]) ** 2 + (box[0][1] - box[3][1]) ** 2)

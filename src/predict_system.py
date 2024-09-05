@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 
-from utility import get_image_file_list
+
 import logging
 import cv2
 import copy
@@ -17,6 +17,7 @@ from utility import parse_args
 from utility import slice_generator, merge_fragmented
 from utility import get_rotate_crop_image, get_minarea_rect_crop
 from utility import check_and_read, draw_ocr_box_txt
+from utility import get_image_file_list
 
 
 from predict_det import TextDetector

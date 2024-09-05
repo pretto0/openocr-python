@@ -1,14 +1,13 @@
 import os
-import sys
 from PIL import Image
 
 import cv2
 import numpy as np
 import math
 import time
-import traceback
 
 from utility import create_predictor, get_infer_gpuid
+from utility import check_and_read, get_image_file_list, parse_args
 from postprocess import build_post_process
 
 class TextRecognizer(object):
@@ -152,3 +151,48 @@ class TextRecognizer(object):
             if self.benchmark:
                 self.autolog.times.end(stamp=True)
         return rec_res, time.time() - st
+    
+
+def main(args):
+    image_file_list = get_image_file_list(args.image_dir)
+    valid_image_file_list = []
+    img_list = []
+
+    # create text recognizer
+    text_recognizer = TextRecognizer(args)
+
+    print(
+        "In PP-OCRv3, rec_image_shape parameter defaults to '3, 48, 320', "
+        "if you are using recognition model with PP-OCRv2 or an older version, please set --rec_image_shape='3,32,320\n"
+    )
+
+    # warmup 2 times
+    if args.warmup:
+        img = np.random.uniform(0, 255, [48, 320, 3]).astype(np.uint8)
+        for i in range(2):
+            res = text_recognizer([img] * int(args.rec_batch_num))
+
+    for image_file in image_file_list:
+        img, flag, _ = check_and_read(image_file)
+        if not flag:
+            img = cv2.imread(image_file)
+        if img is None:
+            print("error in loading image:{}\n".format(image_file))
+            continue
+        valid_image_file_list.append(image_file)
+        img_list.append(img)
+    try:
+        rec_res, _ = text_recognizer(img_list)
+
+    except Exception as E:
+        exit()
+    for ino in range(len(img_list)):
+        print(
+            "Predicts of {}:{}\n".format(valid_image_file_list[ino], rec_res[ino])
+        )
+    if args.benchmark:
+        text_recognizer.autolog.report()
+
+
+if __name__ == "__main__":
+    main(parse_args())
