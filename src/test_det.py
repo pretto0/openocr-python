@@ -2,13 +2,6 @@ from openocr import OpenOCRDet
 from utility import get_image_file_list,check_and_read
 import cv2
 
-# import sys
-# import os
-
-# __dir__ = os.path.dirname(os.path.abspath(__file__))
-# sys.path.append(__dir__)
-# sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "../..")))
-
 imgpath = "img/00018069.jpg"
 
 image_file_list = get_image_file_list(imgpath)
