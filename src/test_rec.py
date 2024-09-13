@@ -1,0 +1,1 @@
+from openocr import OpenOCRRec
