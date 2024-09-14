@@ -6,14 +6,16 @@ import numpy as np
 import math
 import time
 
-from utility import create_predictor, get_infer_gpuid
-from utility import check_and_read, get_image_file_list, parse_args
+from old_utility import create_predictor, get_infer_gpuid
+from old_utility import check_and_read, get_image_file_list, parse_args
 from postprocess import build_post_process
 
 class TextRecognizer(object):
     def __init__(self, args, logger=None):
         # if logger is None:
         #     logger = get_logger()
+        
+        
         self.rec_image_shape = [int(v) for v in args.rec_image_shape.split(",")]
         self.rec_batch_num = args.rec_batch_num
         self.rec_algorithm = args.rec_algorithm
@@ -116,6 +118,7 @@ class TextRecognizer(object):
                 norm_img_batch.append(norm_img)
             norm_img_batch = np.concatenate(norm_img_batch)
             norm_img_batch = norm_img_batch.copy()
+            
             if self.benchmark:
                 self.autolog.times.stamp()
             if self.use_onnx:

@@ -42,6 +42,7 @@ class OpenOCRRec(object):
         width_list = []
         for img in img_list:
             width_list.append(img.shape[1] / float(img.shape[0]))
+
         indices = np.argsort(np.array(width_list))
         rec_res = [["", 0.0]] * img_num
         batch_num = self.rec_batch_num
@@ -67,26 +68,26 @@ class OpenOCRRec(object):
             norm_img_batch = np.concatenate(norm_img_batch)
             norm_img_batch = norm_img_batch.copy()
 
-        self.input_tensor.copy_from_cpu(norm_img_batch)
-        self.predictor.run()
-        outputs = []
-        for output_tensor in self.output_tensors:
-            output = output_tensor.copy_to_cpu()
-            outputs.append(output)
+            self.input_tensor.copy_from_cpu(norm_img_batch)
+            self.predictor.run()
+            outputs = []
+            for output_tensor in self.output_tensors:
+                output = output_tensor.copy_to_cpu()
+                outputs.append(output)
 
-        if len(outputs) != 1:
-            preds = outputs
-        else:
-            preds = outputs[0]
+            if len(outputs) != 1:
+                preds = outputs
+            else:
+                preds = outputs[0]
 
-        rec_result = self.postprocess_op(
-                preds,
-                return_word_box=self.return_word_box,
-                wh_ratio_list=wh_ratio_list,
-                max_wh_ratio=max_wh_ratio,
-            )
-        for rno in range(len(rec_result)):
-            rec_res[indices[beg_img_no + rno]] = rec_result[rno]
+            rec_result = self.postprocess_op(
+                    preds,
+                    return_word_box=self.return_word_box,
+                    wh_ratio_list=wh_ratio_list,
+                    max_wh_ratio=max_wh_ratio,
+                )
+            for rno in range(len(rec_result)):
+                rec_res[indices[beg_img_no + rno]] = rec_result[rno]
 
         return rec_res, time.time() - st
     
@@ -102,10 +103,6 @@ class OpenOCRRec(object):
             resized_w = imgW
         else:
             resized_w = int(math.ceil(imgH * ratio))
-        if self.rec_algorithm == "RARE":
-            if resized_w > self.rec_image_shape[2]:
-                resized_w = self.rec_image_shape[2]
-            imgW = self.rec_image_shape[2]
         resized_image = cv2.resize(img, (resized_w, imgH))
         resized_image = resized_image.astype("float32")
         resized_image = resized_image.transpose((2, 0, 1)) / 255

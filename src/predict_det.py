@@ -19,8 +19,8 @@ import json
 
 from data import create_operators, transform
 from postprocess import build_post_process
-from utility import create_predictor, get_infer_gpuid
-from utility import check_and_read, get_image_file_list, parse_args, draw_text_det_res
+from old_utility import create_predictor, get_infer_gpuid
+from old_utility import check_and_read, get_image_file_list, parse_args, draw_text_det_res
 
 class TextDetector(object):
     def __init__(self, args, logger=None):

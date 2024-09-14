@@ -13,11 +13,11 @@ import time
 from PIL import Image
 # from ppocr.utils.logging import get_logger
 
-from utility import parse_args
-from utility import slice_generator, merge_fragmented
-from utility import get_rotate_crop_image, get_minarea_rect_crop
-from utility import check_and_read, draw_ocr_box_txt
-from utility import get_image_file_list
+from old_utility import parse_args
+from old_utility import slice_generator, merge_fragmented
+from old_utility import get_rotate_crop_image, get_minarea_rect_crop
+from old_utility import check_and_read, draw_ocr_box_txt
+from old_utility import get_image_file_list
 
 
 from predict_det import TextDetector
@@ -35,20 +35,7 @@ class TextSystem(object):
         self.args = args
         self.crop_image_res_index = 0
 
-    def draw_crop_rec_res(self, output_dir, img_crop_list, rec_res):
-        os.makedirs(output_dir, exist_ok=True)
-        bbox_num = len(img_crop_list)
-        for bno in range(bbox_num):
-            cv2.imwrite(
-                os.path.join(
-                    output_dir, f"mg_crop_{bno+self.crop_image_res_index}.jpg"
-                ),
-                img_crop_list[bno],
-            )
-            print(f"{bno}, {rec_res[bno]}")
-        self.crop_image_res_index += bbox_num
-
-    def __call__(self, img, cls=True, slice={}):
+    def __call__(self, img, cls=True):
         time_dict = {"det": 0, "rec": 0, "cls": 0, "all": 0}
 
         if img is None:
@@ -61,31 +48,10 @@ class TextSystem(object):
         #slice 如是，将图片按照给定比例切片再输送给检测模型
 
         ori_im = img.copy()
-        if slice:
-            slice_gen = slice_generator(
-                img,
-                horizontal_stride=slice["horizontal_stride"],
-                vertical_stride=slice["vertical_stride"],
-            )
-            elapsed = []
-            dt_slice_boxes = []
-            for slice_crop, v_start, h_start in slice_gen:
-                dt_boxes, elapse = self.text_detector(slice_crop, use_slice=True)
-                if dt_boxes.size:
-                    dt_boxes[:, :, 0] += h_start
-                    dt_boxes[:, :, 1] += v_start
-                    dt_slice_boxes.append(dt_boxes)
-                    elapsed.append(elapse)
-            dt_boxes = np.concatenate(dt_slice_boxes)
 
-            dt_boxes = merge_fragmented(
-                boxes=dt_boxes,
-                x_threshold=slice["merge_x_thres"],
-                y_threshold=slice["merge_y_thres"],
-            )
-            elapse = sum(elapsed)
-        else:
-            dt_boxes, elapse = self.text_detector(img)
+        dt_boxes, elapse = self.text_detector(img)
+        
+
 
         time_dict["det"] = elapse
 
@@ -101,15 +67,20 @@ class TextSystem(object):
         img_crop_list = []
         #对检测框进行排序
         dt_boxes = sorted_boxes(dt_boxes)
+        
+
         #根据检测框对图片进行裁剪
         for bno in range(len(dt_boxes)):
             tmp_box = copy.deepcopy(dt_boxes[bno])
-            if self.args.det_box_type == "quad":
-                img_crop = get_rotate_crop_image(ori_im, tmp_box)
-            else:
-                img_crop = get_minarea_rect_crop(ori_im, tmp_box)
+
+            img_crop = get_rotate_crop_image(ori_im, tmp_box)
+
             img_crop_list.append(img_crop)
-        
+
+        # with open('textsys.txt', 'w') as f:
+        #     for item in img_crop_list:
+        #         f.write(f"{item}\n")
+
         if len(img_crop_list) > 1000:
             print(
                 f"rec crops num: {len(img_crop_list)}, time and memory cost may be large."
@@ -118,15 +89,17 @@ class TextSystem(object):
         rec_res, elapse = self.text_recognizer(img_crop_list)
         time_dict["rec"] = elapse
         print("rec_res num  : {}, elapsed : {}".format(len(rec_res), elapse))
-        if self.args.save_crop_res:
-            self.draw_crop_rec_res(self.args.crop_res_save_dir, img_crop_list, rec_res)
+
         filter_boxes, filter_rec_res = [], []
         for box, rec_result in zip(dt_boxes, rec_res):
             text, score = rec_result[0], rec_result[1]
+            print(f"text:{text}")
+            print(f"score:{score}")
             if score >= self.drop_score:
                 filter_boxes.append(box)
                 filter_rec_res.append(rec_result)
         end = time.time()
+        exit()
         time_dict["all"] = end - start
         return filter_boxes, filter_rec_res, time_dict
 
@@ -173,10 +146,6 @@ def main(args):
     )
 
     # warm up 10 times
-    if args.warmup:
-        img = np.random.uniform(0, 255, [640, 640, 3]).astype(np.uint8)
-        for i in range(10):
-            res = text_sys(img)
 
     total_time = 0
     cpu_mem, gpu_mem, gpu_util = 0, 0, 0
@@ -285,18 +254,4 @@ def main(args):
 
 if __name__ == "__main__":
     args = parse_args()
-    if args.use_mp:
-        p_list = []
-        total_process_num = args.total_process_num
-        for process_id in range(total_process_num):
-            cmd = (
-                [sys.executable, "-u"]
-                + sys.argv
-                + ["--process_id={}".format(process_id), "--use_mp={}".format(False)]
-            )
-            p = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stdout)
-            p_list.append(p)
-        for p in p_list:
-            p.wait()
-    else:
-        main(args)
+    main(args)
