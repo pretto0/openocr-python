@@ -10,7 +10,7 @@ __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "../..")))
 
-from src.utility import get_rotate_crop_image
+from utility import get_rotate_crop_image
 
 class OpenOCRE2E(object):
     def __init__(self):
@@ -67,13 +67,10 @@ class OpenOCRE2E(object):
         filter_boxes, filter_rec_res = [], []
         for box, rec_result in zip(dt_boxes, rec_res):
             text, score = rec_result[0], rec_result[1]
-            print(f"text:{text}")
-            print(f"score:{score}")
             if score >= self.drop_score:
                 filter_boxes.append(box)
                 filter_rec_res.append(rec_result)
 
-        print(f"after e2e box num:{len(filter_boxes)}")
         end = time.time()
         time_dict["all"] = end - start
         return filter_boxes, filter_rec_res, time_dict

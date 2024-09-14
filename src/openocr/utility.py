@@ -11,17 +11,26 @@ from PIL import Image, ImageDraw, ImageFont
 
 import paddle
 from paddle import inference
+from check_file import ensure_files_exist
 
 def create_predictor(mode):
+    current_dir = os.path.dirname(__file__)
+
     if mode == "det":
-        model_dir = "openatom_det_repsvtr_ch_infer/"
+        model_dir = os.path.join(current_dir,"openatom_det_repsvtr_ch_infer/")
+        url = 'https://paddleocr.bj.bcebos.com/openatom/openatom_det_repsvtr_ch_infer.tar'
+        tar_file_path = os.path.join(current_dir,"openatom_det_repsvtr_ch_infer.tar")
     elif mode == "rec":
-        model_dir = "openatom_rec_svtrv2_ch_infer/"
+        model_dir = os.path.join(current_dir,"openatom_rec_svtrv2_ch_infer/")
+        url = 'https://paddleocr.bj.bcebos.com/openatom/openatom_rec_svtrv2_ch_infer.tar'
+        tar_file_path = os.path.join(current_dir,"openatom_rec_svtrv2_ch_infer.tar")
     else:
         print("not find {} model".format(mode))
         sys.exit(0)
     
     file_names = ["model", "inference"]
+
+    ensure_files_exist(model_dir,tar_file_path,url)
 
     for file_name in file_names:
         model_file_path = "{}/{}.pdmodel".format(model_dir, file_name)

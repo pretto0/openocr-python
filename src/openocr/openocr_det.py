@@ -8,9 +8,9 @@ sys.path.append(__dir__)
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "../..")))
 
 
-from src.data import create_operators,transform
-from src.postprocess import build_post_process
-from src.utility import create_predictor
+from data import create_operators,transform
+from postprocess import build_post_process
+from utility import create_predictor
 
 class OpenOCRDet(object):
     def __init__(self):

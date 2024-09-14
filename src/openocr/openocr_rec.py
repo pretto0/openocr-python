@@ -9,8 +9,8 @@ __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, "../..")))
 
-from src.postprocess import build_post_process
-from src.utility import create_predictor
+from postprocess import build_post_process
+from utility import create_predictor
 
 class OpenOCRRec(object):
     def __init__(self):
@@ -18,9 +18,11 @@ class OpenOCRRec(object):
         self.rec_batch_num = 6
         self.rec_algorithm = "SVTR_LCNet"
 
+        current_dir = os.path.dirname(__file__)
+
         postprocess_params = {
             "name": "CTCLabelDecode",
-            "character_dict_path": "doc/ppocr_keys_v1.txt",
+            "character_dict_path": os.path.join(current_dir,"doc/ppocr_keys_v1.txt"),
             "use_space_char": True,
         }
 
