@@ -85,35 +85,7 @@ def infer(imgpath,savepath='./inference_results'):
                     + "\n"
                 )
             save_results.append(save_pred)
-
-            image = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-            boxes = dt_boxes
-            txts = [rec_res[i][0] for i in range(len(rec_res))]
-            scores = [rec_res[i][1] for i in range(len(rec_res))]
-
-            draw_img = draw_ocr_box_txt(
-                image,
-                boxes,
-                txts,
-                scores,
-                drop_score=drop_score,
-                font_path=font_path,
-            )
-            if flag_gif:
-                save_file = image_file[:-3] + "png"
-            elif flag_pdf:
-                save_file = image_file.replace(".pdf", "_" + str(index) + ".png")
-            else:
-                save_file = image_file
-            cv2.imwrite(
-                os.path.join(draw_img_save_dir, os.path.basename(save_file)),
-                draw_img[:, :, ::-1],
-            )
-            print(
-                "The visualized image saved in {}\n".format(
-                    os.path.join(draw_img_save_dir, os.path.basename(save_file))
-                )
-            )
+            
 
     print("The predict total time is {}\n".format(time.time() - _st))
 

@@ -14,7 +14,7 @@ image_file_list = get_image_file_list(imgpath)
 
 text_sys = OpenOCRE2E()
 
-font_path = "doc/fonts/simfang.ttf"
+font_path = None
 drop_score = 0.5
 draw_img_save_dir = "./inference_results"
 os.makedirs(draw_img_save_dir, exist_ok=True)
@@ -98,7 +98,7 @@ for idx, image_file in enumerate(image_file_list):
             txts,
             scores,
             drop_score=drop_score,
-            font_path=font_path,
+            font_path=None,
         )
         if flag_gif:
             save_file = image_file[:-3] + "png"

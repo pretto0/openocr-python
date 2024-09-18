@@ -236,7 +236,7 @@ def draw_ocr_box_txt(
     txts=None,
     scores=None,
     drop_score=0.5,
-    font_path="doc/fonts/simfang.ttf",
+    font_path=None,
 ):
     h, w = image.height, image.width
     img_left = image.copy()
@@ -267,7 +267,7 @@ def draw_text_det_res(dt_boxes, img):
         cv2.polylines(img, [box], True, color=(255, 255, 0), thickness=2)
     return img
 
-def draw_box_txt_fine(img_size, box, txt, font_path="doc/fonts/simfang.ttf"):
+def draw_box_txt_fine(img_size, box, txt, font_path=None):
     box_height = int(
         math.sqrt((box[0][0] - box[3][0]) ** 2 + (box[0][1] - box[3][1]) ** 2)
     )
@@ -306,15 +306,16 @@ def draw_box_txt_fine(img_size, box, txt, font_path="doc/fonts/simfang.ttf"):
     )
     return img_right_text
 
-def create_font(txt, sz, font_path="doc/fonts/simfang.ttf"):
-    font_size = int(sz[1] * 0.99)
-    font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
-    if int(PIL.__version__.split(".")[0]) < 10:
-        length = font.getsize(txt)[0]
-    else:
-        length = font.getlength(txt)
+def create_font(txt, sz, font_path=None):
+    # font_size = int(sz[1] * 0.99)
+    from PIL import ImageFont
+    font = ImageFont.load_default()
+    # if int(PIL.__version__.split(".")[0]) < 10:
+    #     length = font.getsize(txt)[0]
+    # else:
+    #     length = font.getlength(txt)
 
-    if length > sz[0]:
-        font_size = int(font_size * sz[0] / length)
-        font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
+    # if length > sz[0]:
+    #     font_size = int(font_size * sz[0] / length)
+    #     font = ImageFont.load_default()
     return font

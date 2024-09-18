@@ -9,7 +9,7 @@ with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
 
-VERSION = '0.2.1'
+VERSION = '0.2.3'
 DESCRIPTION = 'a python package for openocr, which is used to help developers quickly deploy OCR algorithms implemented in the openocr framework.'
 
 # Setting up
@@ -26,7 +26,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     project_urls={"Source Code": "https://github.com/Topdu/OpenOCR",},
-    install_requires=["imgaug",'lmdb','numpy','opencv-python<=4.6.0.66','rapidfuzz','tqdm','paddlepaddle-gpu','pyclipper'],
+    install_requires=['numpy','opencv-python<=4.6.0.66','pyclipper'],
     keywords=['python','OCR','STR','OpenOCR','openocr'],
     classifiers=[
         "Development Status :: 1 - Planning",
