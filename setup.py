@@ -9,7 +9,7 @@ with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
 
-VERSION = '0.2.3'
+VERSION = '0.1.0'
 DESCRIPTION = 'a python package for openocr, which is used to help developers quickly deploy OCR algorithms implemented in the openocr framework.'
 
 # Setting up
